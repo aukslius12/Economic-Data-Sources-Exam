@@ -18,6 +18,7 @@ library(rvest)
 library(tibble)
 library(tidyr)
 library(purrr)
+library(ggplot2)
 ```
 
 Funkciju failo nuskaitymas.
@@ -278,11 +279,23 @@ weather_filter_1 <- weather_final %>%
          Data == date_rnd)
 
 # Pavercia POSIXct formatu, norint isfiltruoti valanda is intervalu.
-weather_filter_1 %>% 
-  mutate(Data = parse_date_time(Data, "%m %d", tz = Sys.timezone())) %>%
-  mutate(Start = Data + hours(Start),
-         End = Start + hours(End))
-  
+weather_filter_2 <- weather_filter_1 %>% 
+  mutate(Data = parse_date_time(Data, "%m %d", tz = Sys.timezone()),
+         Start = Data + hours(Start),
+         End = Data + hours(End)) %>%
+  #Perkelia viena diena i prieki, jeigu intervalas apima dvi dienas.
+  mutate(End = if_else(Start > End, End + days(1), End))
+
+# Sukuria laiko intervala, ir galutinai atfiltruoja.
+weather_filter_final <- weather_filter_2 %>% 
+  mutate(interv = interval(Start, End)) %>%
+  filter((Data + hour_rnd) %within% interv)
+
+# Pavercia temperatura i skaiciu ir nupaiso grafika.  # ISSUE FUCK THIS SHIT IM GOING TO SLEEP
+weather_filter_2 %>%
+  mutate(`Temp` = as.numeric(str_match_all(.[,4],".\\d{1,2}")))
+  ggplot() +
+  geom_line(mapping = aes(Start, Temp))
          
 ```
 
