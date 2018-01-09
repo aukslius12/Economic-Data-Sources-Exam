@@ -2,7 +2,9 @@
 title: "EDS Egzaminas"
 author: "Jurgis Samaitis"
 date: "January 7, 2018"
-output: pdf_document
+output:
+  pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -21,18 +23,18 @@ library(purrr)
 library(ggplot2)
 ```
 
-Funkciju failo nuskaitymas.
+Funkcijù failo nuskaitymas.
 ```{r}
 tryCatch(source(str_c(getwd(), "//funkcijos.R"), encoding = "ISO-8859-4"),
          error = source(file = file.choose()), encoding = "ISO-8859-4")
 ```
 
-# 1-4 Uzduotys
+# 1-4 U¾duotys
 
-Naudosiu GitHub API, kad gauciau failu skaiciu ir tikslius pavadinimus.
+Naudosiu GitHub API, kad gauèiau failù skaiciu ir tikslius pavadinimus.
 
 ```{r}
-# Visos duomenu "saugyklos" (repository) sha1 kodas - jo reikalauja GitHub API, 
+# Visos duomenù "saugyklos" (repository) sha1 kodas - jo reikalauja GitHub API, 
 # norint gauti vidinius repository duomenis.
 repo_sha <-
   gh(
@@ -53,26 +55,26 @@ file_info <-
   )$tree
 
 # Pavyzdys
-#head(file_info, 1)
+head(file_info, 1)
 ```
 
-####**1. Kiek is viso yra failu?**
+####**1. Kiek i¹ viso yra failù?**
 
 ```{r}
 length(file_info)
 ```
 
-####**2. Kiek yra skirtingu vietu kuriuose buvo kaupiami duomenys?**
+####**2. Kiek yra skirtingù vietù kuriose buvo kaupiami duomenys?**
 
-Naudodamas metadata, isgaunu failu pavadinimus. Kadangi failo pavadinimas yra miestas_data, tai isgave "miestas", galime pasakyti kiek tokiu vietoviu buvo.
+Naudodamas metadata, i¹gaunu failù pavadinimus. Kadangi failo pavadinimas yra miestas_data, tai i¹gavês "miestas", galiu pasakyti kiek tokiù vietoviù buvo.
 ```{r}
-# Failu pavadinimai.
+# Failù pavadinimai.
 file_path <- character()
 for (i in 1:length(file_info)) {
   file_path[i] <- file_info[[i]]$path
 }
 
-# Miestu pavadinimai.
+# Miestù pavadinimai.
 (file_cities <- str_match(file_path, "\\w*_") %>%
   unique() %>%
   str_sub(end = str_length(.) - 1))
@@ -80,55 +82,59 @@ for (i in 1:length(file_info)) {
 
 ####**3. Kokiu laikotarpiu buvo kaupiami duomenys?**
 
-Dar karta pasinaudoju miestas_data formatu ir isgaunu data. Paverciu i datos formata ir gaunu pradine ir galutine data.
+Dar karta pasinaudoju miestas_data formatu ir i¹gaunu dat±. Paverèiu i date format± ir gaunu pradinê ir galutinê datas.
 
 ```{r}
-# Data is failu vardu.
+# Data i¹ failù vardù.
 file_datetime <-
   str_match(file_path, "\\d{4}-\\d{2}-\\d{2}_\\d{2}:\\d{2}:\\d{2}") %>%
   unique() %>%
-  ymd_hms(tz = Sys.timezone()) # Jeigu zmogus ne is lietuvos, jo problemos kad ne ta laiko zona uzrasyta. :)
+  ymd_hms(tz = Sys.timezone()) # Jeigu ¾mogus ne i¹ Lietuvos, jo problemos kad ne ta laiko zona u¾ra¹yta. :)
 
-# Atsakymas i klausima.
+# Atsakymas i klausim±.
 (file_datetime_range <- file_datetime %>%
     range())
 ```
 
-####**4. Kokiu dazniu buvo kaupiami duomenys? (Kiek kartu per para? Kiek paru? Ar duomenys buvo kaupiami nuolatos be pertraukos?)**
+####**4. Kokiu da¾niu buvo kaupiami duomenys? (Kiek kartù per par±? Kiek parù? Ar duomenys buvo kaupiami nuolatos be pertraukos?)**
 
-#####**4. a) Kiek kartu per para?**
+#####**4. a) Kiek kartù per par±?**
 
-Isgaunu valandas is failo, atrenku tik unikalias reiksmes, isrikiuoju didejanciai. ISSUE: SITAS BUDAS NEPARODO AR TIK TIEK YRA.
+
 ```{r}
-# (Taip turetu buti, taciau yra praleistu valandu).
-file_datetime %>%
-  hour() %>%
-  unique() %>%
-  sort()
-
+# Suskaièiuoja skirtumus tarp kiekvieno laiko tarpo.
+time_differences <- vector()
+for (i in (seq_along(file_datetime) - 1)){
+  
+  time_differences[i] <- as.numeric(difftime(file_datetime[i], file_datetime[i+1], units = "mins"))
+}
+time_differences %>% 
+  tibble() %>%
+  summarise("Vidurkis (min)" = mean(.), "Mediana (min)" = median(.))
 ```
 
-#####**4. b) Kiek paru?**
+24 kartus per par± pagal median±, vidutini¹kai truputìlç daugiau, nes yra praleistù datù.
 
-Galutine data - pradine data.
+#####**4. b) Kiek parù?**
+
+Galutinì data - pradinì data.
 
 ```{r}
 file_datetime_range[2] - file_datetime_range[1]
 ```
 
-#####**4. c) Ar duomenys buvo kaupiami nuolatos be pertraukos?**
+#####**4. c) Ar duomenys buvo kaupiami nuolatos, be pertraukos?**
   
+Funkcija paleid¾ia atskir± cikl±, einanti ¹alia realiù valandù - jeigu ciklo skaièius neatitinka valandù skaièiaus (didinamo kas 1 valand±), vadinasi vienas periodas buvo praleistas.
 ```{r}
-# Funkcija kuri tikrina ar yra praleistu valandu. Gali grazinti ir pacias valandas kaip faila.
 missingHours(file_datetime, warnings_print = T)
-## ISSUE: Kazkodel viena atspausdina kur lygiai valanda praejo wtf
 ```
 
-# 5-8 Uzduotys
+# 5-8 U¾duotys
 
-####**5. Atsitiktinai pasirinkite viena faila is Vilniaus.**
+####**5. Atsitiktinai pasirinkite vien± fail± i¹ Vilniaus.**
 
-Is visu failu pavadinimu, sumatchinu Vilniu, tada atsitinktinai pasirenku 1.
+I¹ visù failù pavadinimù, sumatchinu tik Vilniù, tada atsitinktinai pasirenku 1.
 ```{r}
 set.seed(1401445)
 
@@ -138,7 +144,7 @@ set.seed(1401445)
     sample(1))
 ```
 
-Parsisiunciu pati faila.
+Parsisiunèiu patç fail±.
 ```{r}
 # GitHub url formatas.
 file_random_url <-
@@ -150,154 +156,213 @@ file_random_url <-
 file_random <- read_html(getURL(file_random_url))
 ```
 
-####**6. Siame faile bus HTML lenteles. Kiekviena is ju prasideda ir baigiasi tagu \<table\> ir baigiasi tagu \<\\table\>. Kiek lenteliu yra siame faile?**
+####**6. ©iame faile bus HTML lentelìs. Kiekviena i¹ jù prasideda tagu \<table\> ir baigiasi tagu \<\\table\>. Kiek lenteliù yra ¹iame faile?**
 
-Viso lenteliu, kurios yra \<table\> taguose yra daugiau, taciau tik 10 is ju yra informacija apie orus.
+I¹ viso lenteliù kurios yra \<table\> taguose yra 14-15~, taciau tik 10 i¹ jù yra informacija apie orus.
 ```{r}
-# Viso lenteliu yra:
+# Viso lenteliù yra:
 file_random %>%
   html_nodes(xpath = '//table')
 
-# Lenteles su duomenimis apie orus.
+# Lentelìs su duomenimis apie orus.
 (file_random_nodes <- file_random %>%
     html_nodes(xpath = '//*[@class="weather_box"]//table'))
 ```
 
-####**7. Pasirinkite tas lenteles kuriose yra oru prognoze vienai dienai. Parasykite koda kuris sutvarko viena lentele i mazdaug toki pavidala:**
+####**7. Pasirinkite tas lenteles kuriose yra orù prognozì vienai dienai. Para¹ykite kod± kuris sutvarko viena lentelê.**
 
-####**8. Sujunkite visas lenteles i viena lentele ir sukurkite stulpelius kuriuose yra miestas ir laikas kada buvo nuskaityta to miesto oru prognoze.**
+####**8. Sujunkite visas lenteles i vien± lentelê ir sukurkite stulpelius kuriuose yra miestas ir laikas kada buvo nuskaityta to miesto orù prognozì.**
 
-7-8 padariau kartu, idejes i cikla. 
-```{r, warning = FALSE #R'as pyksta del lietuvisku raidziu ir spamina. options(warn = -1) nepadeda.}
-# html_table sudeda i lenteles, bet prastai.
+7-8 padariau kartu, idejês ç cikl±.
+```{r}
 file_random_raw <- file_random_nodes %>%
   html_table()
 
-# Rezultatu lentele
 orai_table_final <- tibble()
 
-# Funkcija kuri grazins mums data (Detaliau yra aprasyta paciame faile getDatesEnglish.R).
-file_random_dates <- getDatesEnglish(file_random_nodes, as_string = T) #String formatas graziau atrodo.
-
-# Sutvarko visas lenteles ir sudeda i viena.
+# Sutvarko visas lenteles ir sudeda i vien±.
 for (i in seq_along(file_random_raw)) {
   temp_tbl <- as.tibble(file_random_raw[[i]])
   temp_tbl_final <- temp_tbl %>%
-    # Pasalina iconeliu stulpeli (debesuota, sauleta, etc.).
+    # Pa¹alina iconeliù stulpelç (debesuota, saulìta, etc.).
     select(-X2) %>%
     # Pervadina stulpelius atitinkamais pavadinimais.
-    `colnames<-`(slice(., 2)) %>%
-    # Pasalina eilute, kuria naudojom pavadinimams sudeti.
+    `colnames<-`(sapply(slice(., 2), enc2native)) %>%
+    # Pa¹alina eilutê, kuri± naudojom pavadinimams sudìti.
     slice(3:n()) %>%
-    # Prideda datos ir laiko eilutes.
-    mutate("Data" = file_random_dates[i]) %>%
-    select(Data, Laikas:Krituliai) %>%
+    # Prideda laiko ir datos eilutes.
     separate(Laikas, into = c("Pradzia", "Pabaiga"), sep = " - ") %>%
     mutate(Pradzia = as.integer(str_sub(Pradzia, end = 2)),
                Pabaiga = as.integer(str_sub(Pabaiga, end = 2)))
   
-  # Prideda sutvarkyta lentele.
   orai_table_final <- rbind(orai_table_final, temp_tbl_final)
 }
 
-# Galutine lentele.
-orai_table_final
+# Galutinì lentele.
+orai_table_final %>% mutate(Miestas = "vilnius")
 ```
 
-# 9-14 Uzduotys
+# 9-14 U¾duotys
 
-####**9. Panaudokite parasyta funkcija vienam failui skaityti, nuskaityti visoms Vilniaus miesto prognozems. Kiek eiluciu yra gautoje galutineje lenteleje?**
+####**9. Panaudokite parasyt± funkcij± vienam failui skaityti, nuskaityti visoms Vilniaus miesto prognozìms. Kiek eiluèiù yra gautoje galutinìje lentelìje?**
 
-Naudojama funkcija yra viskas kas buvo virsuj sujungta i viena.
-```{r, warning = FALSE}
+Naudojama funkcija yra (beveik) viskas kas buvo virsuj, sujungta i vien±.
+```{r}
 weather_vilnius <- getWeatherTable("Vilnius", file_path)
-nrow(weather_vilnius) # ISSUE: NE VISOS DATOS YRA NX. TAIP PAT NEEDS TESTING
+head(weather_vilnius)
+
+# Eiluèiù gautoje lentelìje yra:
+nrow(weather_vilnius)
 ```
 
-####**10. Pritaikykite Vilniaus miesto duomenims nuskaityti skirta funkcija nuskaityti Kauno ir Klaipedos duomenimis. Sudekite viska i viena lentele. Kiek yra duomenu kiekvienam miestui?**
+####**10. Pritaikykite Vilniaus miesto duomenims nuskaityti skirt± funkcij± nuskaityti Kauno ir Klaipìdos duomenimis. Sudìkite visk± ç vien± lentelê. Kiek yra duomenu kiekvienam miestui?**
 
-Ta pacia funkcija naudoju kiekvienam miestui, po to apjungiu i viena.
-```{r, warning = FALSE}
+T± paèi± funkcij± naudoju kiekvienam miestui, po to apjungiu i vien±.
+
+```{r}
 # Kauno duomenys.
-weather_kaunas <- getWeatherTable("kaunas", file_path)
+weather_kaunas <- getWeatherTable("kauNas", file_path)
 nrow(weather_kaunas)
 
 # Klaipedos duomenys.
-weather_klaipeda <- getWeatherTable("klaipeda", file_path)
+weather_klaipeda <- getWeatherTable("kLaipeda", file_path)
 nrow(weather_klaipeda)
 
 # Bendrai.
-weather_final <- rbind(weahter_vilnius, weather_kaunas, weather_klaipeda)
-
+weather_final <- rbind(weather_vilnius, weather_kaunas, weather_klaipeda)
+head(weather_final)
 ```
 
-####**11. Parasykite funkcija kuri skaito Ciurlionio hidrometereologijos stoties duomenis. Jos rezultatas turi buti mazdaug toks:**
+####**11. Para¹ykite funkcij± kuri skaito Èiurlionio hidrometereologijos stoties duomenis.**
 
-Beveik identiskas formatas pries tai funkcijai. Nuo Ciulionio failu numetu nereikalingus simbolius su regexpr ir paverciu JSON formatu.
+Beveik identi¹kas formatas prie¹ tai naudotai funkcijai (truputìlç trumpesnì). Nuo Èiulionio failù numetu nereikalingus simbolius su regexpr ir paverciu JSON formatu (fixJson).
 ```{r}
-weather_ciurlionis <- getWeatherCiurlionis(file_path) # ISSUE: NEPRATESTUOTA
+weather_ciurlionis <- getWeatherCiurlionis(file_path)
+head(weather_ciurlionis)
 ```
 
-####**12. Pritaikykite sia funkcija nuskaityti visiems Ciurlionio stoties duomenims. Kokia yra vidutine vidurdienio temperatura duomenu fiksuotu laikotarpiu? Atsitiktinai pasirinkite 21 dienu laikotarpi. Suskaiciuokite vidutine dienos ir nakties temperatura.**
+####**12. Pritaikykite ¹i± funkcija nuskaityti visiems Èiurlionio stoties duomenims. Kokia yra vidutinì vidurdienio temperatþra duomenù fiksuotu laikotarpiu? Atsitiktinai pasirinkite 21 dienù laikotarpç. Suskaièiuokite vidutinê dienos ir nakties temperatur±.**
 
 ```{r}
-# Vidutine temperatura.
+# Vidutinì vidurdienio temperatþra.
 weather_ciurlionis %>%
+  filter(Hour == 12) %>%
   summarize(mean(Temp))
 
-# Pasirenkame atsitiktine diena is duomenu.
+# Pasirenkame atsitiktinê dien± i¹ duomenù.
 set.seed(1401445)
 start_date <- sample(weather_ciurlionis$Date, 1)
 end_date <- start_date + days(20)
 
-# Pasirenkame duomenis. Dienos perioda laikysime nuo 8:00 iki 20:00, nakties - kas lieka.
+# Pasirenkame duomenis. Dienos period± laikysiu nuo 8:00 iki 20:00, nakties - kas lieka.
 weather_ciurlionis_dn <- weather_ciurlionis %>%
-  # Atenkame duomenis patenkancius i laiko intervala.
-  filter((Date >= start_date) && (Date <= end_date)) %>%
-  # Pridedame diena/naktis eilute 
+  filter((Date >= start_date) & (Date <= end_date)) %>%
   mutate(Hour = as.integer(Hour),
-         `diena/naktis` = ifelse((Hour >= 8) && (Hour <= 20), "diena", "naktis"))
+         `diena/naktis` = ifelse((Hour >= 8) & (Hour <= 20), "diena", "naktis"))
 
-# Skaiciuojame vidurkius
+# Vidurkiai.
 weather_ciurlionis_dn %>%
   group_by(`diena/naktis`) %>%
   summarize("Vidurkis" = mean(Temp))
 
 ```
 
-####**13. Parasykite funkcija kuri nubrezia pasirinktos dienos, valandos ir vietos visas surinktas prognozes kaip laiko eilute(s). Atsitiktinai pasirinkite diena, valanda ir miesta bei nubrezkite grafika.**
+####**13. Para¹ykite funkcij± kuri nubrì¾ia pasirinktos dienos, valandos ir vietos visas surinktas prognozes kaip laiko eilutê(s). Atsitiktinai pasirinkite dien±, valand± ir miest± bei nubre¾kite grafik±.**
 
-```{r, warning = FALSE}
+```{r}
 # Atsitiktinai pasirenka parametrus.
+set.seed(1401445)
 city_rnd <- sample(file_cities, 1)
 date_rnd <- weather_final$Data %>% sample(1)
-hour_rnd <- hours(sample(0:24, 1))
+hour_rnd <- sample(0:23, 1)
 
-# Isfiltruoja duomenis pagal miesta ir data.
-weather_filter_1 <- weather_final %>%
+# I¹filtruoja duomenis pagal miest±, dat± ir valand±.
+weather_filter <- weather_final %>%
   filter(Miestas == city_rnd,
-         Data == date_rnd)
+         Data == date_rnd,
+         Pradzia <= hour_rnd,
+         Pabaiga >= hour_rnd)
 
-# Pavercia POSIXct formatu, norint isfiltruoti valanda is intervalu.
-weather_filter_2 <- weather_filter_1 %>% 
-  mutate(Data = parse_date_time(Data, "%m %d", tz = Sys.timezone()),
-         Start = Data + hours(Start),
-         End = Data + hours(End)) %>%
-  #Perkelia viena diena i prieki, jeigu intervalas apima dvi dienas.
-  mutate(End = if_else(Start > End, End + days(1), End))
+# Jeigu filtravimas nieko nerado, vadinasi pasirinkta valanda yra labai ankstus rytas (0-2 valanda).
+if (nrow(weather_filter) == 0) {
+weather_filter <- weather_final %>%
+  filter(Miestas == city_rnd,
+         Data == date_rnd,
+         Pradzia >= 18,
+         Pabaiga >= hour_rnd & Pabaiga < 10)
+}
 
-# Sukuria laiko intervala, ir galutinai atfiltruoja.
-weather_filter_final <- weather_filter_2 %>% 
-  mutate(interv = interval(Start, End)) %>%
-  filter((Data + hour_rnd) %within% interv)
+# Jeigu ir antras filtravimas nieko nerado, vadinasi pasirinkta valanda yra vìlus vakaras (22+ valanda).
+if (nrow(weather_filter) == 0) {
+weather_filter <- weather_final %>%
+  filter(Miestas == city_rnd,
+         Data == date_rnd,
+         Pradzia <= hour_rnd & Pradzia >= 18,
+         Pabaiga < 10)
+}
 
-# Pavercia temperatura i skaiciu ir nupaiso grafika.  # ISSUE FUCK THIS SHIT IM GOING TO SLEEP
-weather_filter_2 %>%
-  mutate(`Temp` = as.numeric(str_match_all(.[,4],".\\d{1,2}")))
+# Paverèia temperatur± i skaièiù ir nupai¹o grafik±.
+weather_filter %>%
+  mutate(Temperatura = as.numeric(str_match(Temperatura,".\\d{1,2}"))) %>%
   ggplot() +
-  geom_line(mapping = aes(Start, Temp))
-         
+  geom_point(mapping = aes(Data, Temperatura), color = "blue", size = 2) +
+  theme_minimal()
+
 ```
 
 
-####**14. Pasirinkite atsitiktinai diena, valanda ir nubrezkite surinktu Vilniaus prognoziu grafika bei atidekite tos dienos ir valandos uzfiksuota realia temperatura is Ciurlionio stoties.**
+####**14. Pasirinkite atsitiktinai dien±, valand± ir nubre¾kite surinktù Vilniaus prognoziu grafik± bei atidìkite tos dienos ir valandos uzfiksuot± reali± temperatþr± is Èiurlionio stoties.**
+
+
+```{r}
+# Atsitiktinai parenka parametrus (be miesto).
+set.seed(1401445)
+date_rnd <- weather_final$Data %>% sample(1)
+hour_rnd <- sample(0:23, 1)
+
+# I¹filtruoja vilniaus duomenis, tokiu paèiu principu kaip ir 13 uzduotyje.
+# NUO ÈIA KODAS KARTOJASI.
+
+# I¹filtruoja duomenis pagal miest±, dat± ir valand±.
+weather_filter <- weather_final %>%
+  filter(Miestas == "vilnius",
+         Data == date_rnd,
+         Pradzia <= hour_rnd,
+         Pabaiga >= hour_rnd)
+
+# Jeigu filtravimas nieko nerado, vadinasi pasirinkta valanda yra labai ankstus rytas (0-2 valanda).
+if (nrow(weather_filter) == 0) {
+weather_filter <- weather_final %>%
+  filter(Miestas == city_rnd,
+         Data == date_rnd,
+         Pradzia >= 18,
+         Pabaiga >= hour_rnd & Pabaiga < 10)
+}
+
+# Jeigu ir antras filtravimas nieko nerado, vadinasi pasirinkta valanda yra vìlus vakaras (22+ valanda).
+if (nrow(weather_filter) == 0) {
+weather_filter <- weather_final %>%
+  filter(Miestas == city_rnd,
+         Data == date_rnd,
+         Pradzia <= hour_rnd & Pradzia >= 18,
+         Pabaiga < 10)
+}
+
+weather_plot <- weather_filter %>%
+  mutate(Temperatura = as.numeric(str_match(Temperatura,".\\d{1,2}"))) %>%
+  ggplot() +
+  geom_point(mapping = aes(Data, Temperatura), color = "blue", size = 2) +
+  theme_minimal()
+
+# NUO ÈIA NEBESIKARTOJA KODAS.
+# Atrenka atitikamus Èiurlionio stoties duomenis.
+weather_ciurlionis_filtered <- weather_ciurlionis %>%
+  filter(Date == date_rnd,
+         Hour == hour_rnd)
+
+# Prideda nauj± informacij± prie seno grafiko.
+weather_plot + geom_point(data = weather_ciurlionis_filtered, mapping = aes(Date, Temp), color = "red", shape = 1, size = 3)
+  
+
+```
+
