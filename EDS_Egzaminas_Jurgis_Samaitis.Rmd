@@ -362,7 +362,5 @@ weather_ciurlionis_filtered <- weather_ciurlionis %>%
 
 # Prideda nauj± informacij± prie seno grafiko.
 weather_plot + geom_point(data = weather_ciurlionis_filtered, mapping = aes(Date, Temp), color = "red", shape = 1, size = 3)
-  
-
 ```
 
